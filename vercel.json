@@ -1,0 +1,10 @@
+{
+  "services": {
+    "web": {
+      "root": ".",
+      "entrypoint": "experiments/prerender/Dockerfile",
+      "runtime": "container"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": { "service": "web" } }]
+}
