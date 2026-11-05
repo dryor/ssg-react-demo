@@ -1,0 +1,4 @@
+[
+  { "path": "/", "page": "home", "prerender": true },
+  { "path": "/pagina-2", "page": "pagina2", "prerender": false }
+]
