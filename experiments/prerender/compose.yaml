@@ -11,6 +11,18 @@ services:
       interval: 1s
       retries: 30
 
+  devserver:
+    build:
+      context: ../..
+      dockerfile: experiments/prerender/Dockerfile
+      target: dev
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 1s
+      retries: 60
+
   e2e:
     build:
       context: ../..
@@ -18,9 +30,12 @@ services:
       target: e2e
     environment:
       BASE_URL: http://web
+      DEV_URL: http://devserver:3000
       CI: "1"
     depends_on:
       web:
+        condition: service_healthy
+      devserver:
         condition: service_healthy
     init: true
     ipc: host
