@@ -11,7 +11,7 @@ services:
       interval: 1s
       retries: 30
 
-  dev:
+  devserver:
     build:
       context: ../..
       dockerfile: experiments/prerender/Dockerfile
@@ -30,12 +30,12 @@ services:
       target: e2e
     environment:
       BASE_URL: http://web
-      DEV_URL: http://dev:3000
+      DEV_URL: http://devserver:3000
       CI: "1"
     depends_on:
       web:
         condition: service_healthy
-      dev:
+      devserver:
         condition: service_healthy
     init: true
     ipc: host

@@ -5,19 +5,24 @@ import type { RsbuildPlugin } from '@rsbuild/core';
 import table from './routes.json' with { type: 'json' };
 
 const EMPTY_ROOT = '<div id="root"></div>';
+const NOT_FOUND_URL = '/404.html';
 
-const prerenderPaths = table
-  .filter((route) => route.prerender)
-  .map(({ path }) => {
-    if (!path.startsWith('/') || /[:*?]/.test(path)) {
-      throw new Error(`routes.json: "${path}" no es una ruta estática pre-renderizable`);
-    }
-    return path;
-  });
+const routes = table.map((route) => {
+  if (!route.path.startsWith('/') || /[:*?]|.\/$/.test(route.path)) {
+    throw new Error(`routes.json: "${route.path}" debe ser una ruta estática sin barra final`);
+  }
+  return route;
+});
 
 const outputFile = (path: string) => join(path, 'index.html');
 
-export const pluginPrerender = (): RsbuildPlugin => ({
+const csrRoutesMap = () =>
+  routes
+    .filter((route) => !route.prerender)
+    .map(({ path }) => `${path} 1;\n`)
+    .join('');
+
+export const pluginPrerender = ({ nginxDir }: { nginxDir: string }): RsbuildPlugin => ({
   name: 'prerender',
   setup(api) {
     api.onAfterBuild(async ({ environments }) => {
@@ -31,12 +36,19 @@ export const pluginPrerender = (): RsbuildPlugin => ({
       await writeFile(join(webDist, 'spa.html'), template);
 
       const { render } = await import(pathToFileURL(join(serverDist, 'index.js')).href);
-      for (const path of prerenderPaths) {
-        const appHtml: string = await render(path);
-        const file = join(webDist, outputFile(path));
-        await mkdir(dirname(file), { recursive: true });
-        await writeFile(file, template.replace(EMPTY_ROOT, () => `<div id="root">${appHtml}</div>`));
-      }
+      const write = async (file: string, url: string) => {
+        const appHtml: string = await render(url);
+        const target = join(webDist, file);
+        await mkdir(dirname(target), { recursive: true });
+        await writeFile(target, template.replace(EMPTY_ROOT, () => `<div id="root">${appHtml}</div>`));
+      };
+
+      for (const { path } of routes.filter((route) => route.prerender)) await write(outputFile(path), path);
+      await write(NOT_FOUND_URL, NOT_FOUND_URL);
+
+      const mapFile = join(api.context.rootPath, nginxDir, 'csr-routes.map');
+      await mkdir(dirname(mapFile), { recursive: true });
+      await writeFile(mapFile, csrRoutesMap());
     });
   },
 });

@@ -1,17 +1,26 @@
-import { defineConfig } from '@rsbuild/core';
+import { defineConfig, type EnvironmentConfig, type RsbuildConfig } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
 import { pluginPrerender } from './prerender-plugin';
 
-export default defineConfig({
-  plugins: [pluginReact(), pluginPrerender()],
+const web: EnvironmentConfig = {
+  source: { entry: { index: './src/entry-client.tsx' } },
+  output: { target: 'web' },
+};
+
+const dev: RsbuildConfig = {
+  plugins: [pluginReact()],
+  environments: { web },
+};
+
+const build: RsbuildConfig = {
+  plugins: [pluginReact(), pluginPrerender({ nginxDir: 'build/nginx' })],
   environments: {
-    web: {
-      source: { entry: { index: './src/entry-client.tsx' } },
-      output: { target: 'web' },
-    },
+    web,
     node: {
       source: { entry: { index: './src/entry-server.tsx' } },
-      output: { target: 'node', distPath: { root: 'dist/server' } },
+      output: { target: 'node', distPath: { root: 'build/server' } },
     },
   },
-});
+};
+
+export default defineConfig(({ command }) => (command === 'build' ? build : dev));
