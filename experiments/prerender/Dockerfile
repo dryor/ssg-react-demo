@@ -1,9 +1,15 @@
-FROM node:22-slim AS build
+FROM node:22-slim AS deps
 RUN npm install -g pnpm@10.28.0
 WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
 RUN pnpm --filter @ssg-react-demo/prerender build
+
+FROM deps AS dev
+WORKDIR /repo/experiments/prerender
+CMD ["pnpm", "exec", "rsbuild", "dev", "--host", "0.0.0.0", "--port", "3000"]
 
 FROM nginx:1.29-alpine AS web
 COPY experiments/prerender/nginx.conf /etc/nginx/conf.d/default.conf
